@@ -1,0 +1,66 @@
+databaseChangeLog:
+  - changeSet:
+      id: 004-create-invitations-table
+      author: lufthansa
+      changes:
+        - createTable:
+            tableName: invitations
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: room_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: email
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: token
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: status
+                  type: varchar(20)
+                  defaultValue: 'PENDING'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: invited_by
+                  type: varchar(100)
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+              - column:
+                  name: expires_at
+                  type: timestamp with time zone
+              - column:
+                  name: accepted_at
+                  type: timestamp with time zone
+
+        - addForeignKeyConstraint:
+            baseTableName: invitations
+            baseColumnNames: room_id
+            referencedTableName: rooms
+            referencedColumnNames: id
+            constraintName: fk_invitations_room
+            onDelete: CASCADE
+
+        - createIndex:
+            tableName: invitations
+            indexName: idx_invitations_token
+            columns:
+              - column:
+                  name: token
+

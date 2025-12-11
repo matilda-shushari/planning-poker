@@ -1,0 +1,91 @@
+databaseChangeLog:
+  - changeSet:
+      id: 001-create-rooms-table
+      author: lufthansa
+      changes:
+        - createTable:
+            tableName: rooms
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: varchar(500)
+              - column:
+                  name: deck_type
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: moderator_id
+                  type: varchar(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: moderator_name
+                  type: varchar(100)
+              - column:
+                  name: short_code
+                  type: varchar(8)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: active
+                  type: boolean
+                  defaultValueBoolean: true
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: timestamp with time zone
+
+        - createIndex:
+            tableName: rooms
+            indexName: idx_rooms_moderator_id
+            columns:
+              - column:
+                  name: moderator_id
+
+        - createIndex:
+            tableName: rooms
+            indexName: idx_rooms_short_code
+            columns:
+              - column:
+                  name: short_code
+
+        - createTable:
+            tableName: room_deck_values
+            columns:
+              - column:
+                  name: room_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: card_value
+                  type: varchar(20)
+              - column:
+                  name: position
+                  type: int
+
+        - addForeignKeyConstraint:
+            baseTableName: room_deck_values
+            baseColumnNames: room_id
+            referencedTableName: rooms
+            referencedColumnNames: id
+            constraintName: fk_deck_values_room
+            onDelete: CASCADE
+

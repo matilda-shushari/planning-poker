@@ -1,0 +1,65 @@
+databaseChangeLog:
+  - changeSet:
+      id: 001-create-votes-table
+      author: lufthansa
+      changes:
+        - createTable:
+            tableName: votes
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: story_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: room_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: varchar(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_name
+                  type: varchar(100)
+              - column:
+                  name: value
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: timestamp with time zone
+
+        - addUniqueConstraint:
+            tableName: votes
+            columnNames: story_id, user_id
+            constraintName: uk_vote_story_user
+
+        - createIndex:
+            tableName: votes
+            indexName: idx_votes_story_id
+            columns:
+              - column:
+                  name: story_id
+
+        - createIndex:
+            tableName: votes
+            indexName: idx_votes_room_id
+            columns:
+              - column:
+                  name: room_id
+

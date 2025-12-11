@@ -1,0 +1,754 @@
+{
+  "info": {
+    "name": "Planning Poker API",
+    "description": "Complete API collection for Planning Poker Platform - Lufthansa Assessment",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8081"
+    },
+    {
+      "key": "voteServiceUrl",
+      "value": "http://localhost:8082"
+    },
+    {
+      "key": "auditServiceUrl",
+      "value": "http://localhost:8083"
+    },
+    {
+      "key": "keycloakUrl",
+      "value": "http://localhost:8180"
+    },
+    {
+      "key": "realm",
+      "value": "planning-poker"
+    },
+    {
+      "key": "clientId",
+      "value": "planning-poker-web"
+    },
+    {
+      "key": "accessToken",
+      "value": ""
+    },
+    {
+      "key": "roomId",
+      "value": ""
+    },
+    {
+      "key": "storyId",
+      "value": ""
+    },
+    {
+      "key": "shortCode",
+      "value": ""
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "🔐 Authentication",
+      "item": [
+        {
+          "name": "Get Token (Moderator)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.collectionVariables.set('accessToken', jsonData.access_token);",
+                  "pm.test('Token received', function () {",
+                  "    pm.expect(jsonData.access_token).to.exist;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "password"
+                },
+                {
+                  "key": "client_id",
+                  "value": "{{clientId}}"
+                },
+                {
+                  "key": "username",
+                  "value": "matilda"
+                },
+                {
+                  "key": "password",
+                  "value": "YOUR_PASSWORD"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{keycloakUrl}}/realms/{{realm}}/protocol/openid-connect/token",
+              "host": ["{{keycloakUrl}}"],
+              "path": ["realms", "{{realm}}", "protocol", "openid-connect", "token"]
+            }
+          }
+        },
+        {
+          "name": "Get Token (Participant)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.collectionVariables.set('accessToken', jsonData.access_token);",
+                  "pm.test('Token received', function () {",
+                  "    pm.expect(jsonData.access_token).to.exist;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "password"
+                },
+                {
+                  "key": "client_id",
+                  "value": "{{clientId}}"
+                },
+                {
+                  "key": "username",
+                  "value": "florenc"
+                },
+                {
+                  "key": "password",
+                  "value": "YOUR_PASSWORD"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{keycloakUrl}}/realms/{{realm}}/protocol/openid-connect/token",
+              "host": ["{{keycloakUrl}}"],
+              "path": ["realms", "{{realm}}", "protocol", "openid-connect", "token"]
+            }
+          }
+        },
+        {
+          "name": "Get Token (Admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.collectionVariables.set('accessToken', jsonData.access_token);",
+                  "pm.test('Token received', function () {",
+                  "    pm.expect(jsonData.access_token).to.exist;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "password"
+                },
+                {
+                  "key": "client_id",
+                  "value": "{{clientId}}"
+                },
+                {
+                  "key": "username",
+                  "value": "adminuser"
+                },
+                {
+                  "key": "password",
+                  "value": "YOUR_PASSWORD"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{keycloakUrl}}/realms/{{realm}}/protocol/openid-connect/token",
+              "host": ["{{keycloakUrl}}"],
+              "path": ["realms", "{{realm}}", "protocol", "openid-connect", "token"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🏠 Room Management",
+      "item": [
+        {
+          "name": "Create Room",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.collectionVariables.set('roomId', jsonData.id);",
+                  "pm.collectionVariables.set('shortCode', jsonData.shortCode);",
+                  "pm.test('Room created', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "    pm.expect(jsonData.id).to.exist;",
+                  "    pm.expect(jsonData.shortCode).to.exist;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sprint 47 Planning\",\n  \"description\": \"Lufthansa booking system feature estimation\",\n  \"deckType\": \"FIBONACCI\",\n  \"customDeckValues\": null\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/rooms",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "rooms"]
+            }
+          }
+        },
+        {
+          "name": "Get Room by ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Room retrieved', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/rooms/{{roomId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "rooms", "{{roomId}}"]
+            }
+          }
+        },
+        {
+          "name": "Get Room by Short Code",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/rooms/code/{{shortCode}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "rooms", "code", "{{shortCode}}"]
+            }
+          }
+        },
+        {
+          "name": "Join Room",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Joined room', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/rooms/join/{{shortCode}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "rooms", "join", "{{shortCode}}"]
+            }
+          }
+        },
+        {
+          "name": "Get My Rooms",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/rooms/my-rooms",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "rooms", "my-rooms"]
+            }
+          }
+        },
+        {
+          "name": "Update Room",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Sprint Planning\",\n  \"description\": \"Updated description\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/rooms/{{roomId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "rooms", "{{roomId}}"]
+            }
+          }
+        },
+        {
+          "name": "Delete Room",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/rooms/{{roomId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "rooms", "{{roomId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📖 Story Management",
+      "item": [
+        {
+          "name": "Create Story",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.collectionVariables.set('storyId', jsonData.id);",
+                  "pm.test('Story created', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "    pm.expect(jsonData.id).to.exist;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"PP-101: Implement seat selection UI\",\n  \"description\": \"Create interactive seat map component with real-time availability\",\n  \"jiraLink\": \"https://jira.lufthansa.com/browse/PP-101\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/rooms/{{roomId}}/stories",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "rooms", "{{roomId}}", "stories"]
+            }
+          }
+        },
+        {
+          "name": "Get Stories by Room",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/rooms/{{roomId}}/stories",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "rooms", "{{roomId}}", "stories"]
+            }
+          }
+        },
+        {
+          "name": "Get Story by ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/stories/{{storyId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "stories", "{{storyId}}"]
+            }
+          }
+        },
+        {
+          "name": "Start Voting",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Voting started', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.status).to.equal('VOTING');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/stories/{{storyId}}/start-voting",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "stories", "{{storyId}}", "start-voting"]
+            }
+          }
+        },
+        {
+          "name": "Update Story",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Updated Story Title\",\n  \"description\": \"Updated description\",\n  \"jiraLink\": \"https://jira.lufthansa.com/browse/PP-102\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/stories/{{storyId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "stories", "{{storyId}}"]
+            }
+          }
+        },
+        {
+          "name": "Delete Story",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/stories/{{storyId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "stories", "{{storyId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🗳️ Voting",
+      "item": [
+        {
+          "name": "Cast Vote",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Vote cast', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"storyId\": \"{{storyId}}\",\n  \"roomId\": \"{{roomId}}\",\n  \"value\": \"8\"\n}"
+            },
+            "url": {
+              "raw": "{{voteServiceUrl}}/api/v1/votes",
+              "host": ["{{voteServiceUrl}}"],
+              "path": ["api", "v1", "votes"]
+            }
+          }
+        },
+        {
+          "name": "Get My Vote",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{voteServiceUrl}}/api/v1/votes/stories/{{storyId}}/my-vote",
+              "host": ["{{voteServiceUrl}}"],
+              "path": ["api", "v1", "votes", "stories", "{{storyId}}", "my-vote"]
+            }
+          }
+        },
+        {
+          "name": "Get Vote Count",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{voteServiceUrl}}/api/v1/votes/stories/{{storyId}}/count",
+              "host": ["{{voteServiceUrl}}"],
+              "path": ["api", "v1", "votes", "stories", "{{storyId}}", "count"]
+            }
+          }
+        },
+        {
+          "name": "Reveal Votes",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Votes revealed', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.votes).to.be.an('array');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{voteServiceUrl}}/api/v1/voting/stories/{{storyId}}/reveal?roomId={{roomId}}",
+              "host": ["{{voteServiceUrl}}"],
+              "path": ["api", "v1", "voting", "stories", "{{storyId}}", "reveal"],
+              "query": [
+                {
+                  "key": "roomId",
+                  "value": "{{roomId}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Finish Voting",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{voteServiceUrl}}/api/v1/voting/stories/{{storyId}}/finish?roomId={{roomId}}&finalEstimate=8&storyTitle=Test Story",
+              "host": ["{{voteServiceUrl}}"],
+              "path": ["api", "v1", "voting", "stories", "{{storyId}}", "finish"],
+              "query": [
+                {
+                  "key": "roomId",
+                  "value": "{{roomId}}"
+                },
+                {
+                  "key": "finalEstimate",
+                  "value": "8"
+                },
+                {
+                  "key": "storyTitle",
+                  "value": "Test Story"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Reset Votes",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{voteServiceUrl}}/api/v1/voting/stories/{{storyId}}/reset?roomId={{roomId}}",
+              "host": ["{{voteServiceUrl}}"],
+              "path": ["api", "v1", "voting", "stories", "{{storyId}}", "reset"],
+              "query": [
+                {
+                  "key": "roomId",
+                  "value": "{{roomId}}"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📊 Audit (Admin Only)",
+      "item": [
+        {
+          "name": "Get All Audit Logs",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{auditServiceUrl}}/api/v1/admin/audit?page=0&size=50",
+              "host": ["{{auditServiceUrl}}"],
+              "path": ["api", "v1", "admin", "audit"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "50"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Audit Logs by Entity Type",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{auditServiceUrl}}/api/v1/admin/audit/entity-type/ROOM",
+              "host": ["{{auditServiceUrl}}"],
+              "path": ["api", "v1", "admin", "audit", "entity-type", "ROOM"]
+            }
+          }
+        },
+        {
+          "name": "Get Audit Logs by User",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{auditServiceUrl}}/api/v1/admin/audit/user/{{userId}}",
+              "host": ["{{auditServiceUrl}}"],
+              "path": ["api", "v1", "admin", "audit", "user", "{{userId}}"]
+            }
+          }
+        },
+        {
+          "name": "Search Audit Logs",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{auditServiceUrl}}/api/v1/admin/audit/search?entityType=ROOM&action=CREATE",
+              "host": ["{{auditServiceUrl}}"],
+              "path": ["api", "v1", "admin", "audit", "search"],
+              "query": [
+                {
+                  "key": "entityType",
+                  "value": "ROOM"
+                },
+                {
+                  "key": "action",
+                  "value": "CREATE"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "❤️ Health Checks",
+      "item": [
+        {
+          "name": "Room Service Health",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/actuator/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["actuator", "health"]
+            }
+          }
+        },
+        {
+          "name": "Vote Service Health",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{voteServiceUrl}}/actuator/health",
+              "host": ["{{voteServiceUrl}}"],
+              "path": ["actuator", "health"]
+            }
+          }
+        },
+        {
+          "name": "Audit Service Health",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{auditServiceUrl}}/actuator/health",
+              "host": ["{{auditServiceUrl}}"],
+              "path": ["actuator", "health"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
+

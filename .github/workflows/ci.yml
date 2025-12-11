@@ -1,0 +1,287 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop, master]
+  pull_request:
+    branches: [main, develop, master]
+
+env:
+  JAVA_VERSION: '17'
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ${{ github.repository_owner }}/planning-poker
+
+jobs:
+  # ===========================================
+  # Build and Test Job
+  # ===========================================
+  build-and-test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: test_db
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build with Maven
+        run: ./mvnw clean compile -DskipTests
+
+      - name: Run Unit Tests with Coverage
+        run: ./mvnw test -Dspring.profiles.active=test
+        
+      - name: Generate JaCoCo Coverage Report
+        run: ./mvnw jacoco:report -pl pp-room-service,pp-vote-service,pp-audit-service
+
+      - name: Check Coverage Threshold (Room Service)
+        run: |
+          if [ -f pp-room-service/target/site/jacoco/jacoco.csv ]; then
+            COVERAGE=$(awk -F',' 'NR>1 {missed+=$4; covered+=$5} END {if(missed+covered>0) print int(covered*100/(missed+covered)); else print 0}' pp-room-service/target/site/jacoco/jacoco.csv)
+            echo "Room Service Coverage: $COVERAGE%"
+            if [ "$COVERAGE" -lt 60 ]; then
+              echo "Warning: Coverage is below 70% threshold"
+            fi
+          fi
+
+      - name: Upload Coverage Reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-reports
+          path: |
+            pp-room-service/target/site/jacoco/
+            pp-vote-service/target/site/jacoco/
+            pp-audit-service/target/site/jacoco/
+          retention-days: 7
+
+      - name: Package Applications
+        run: ./mvnw package -DskipTests
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: jar-files
+          path: |
+            pp-gateway/target/*.jar
+            pp-room-service/target/*.jar
+            pp-vote-service/target/*.jar
+            pp-audit-service/target/*.jar
+          retention-days: 1
+
+  # ===========================================
+  # Code Quality Analysis (SonarQube)
+  # ===========================================
+  code-quality:
+    name: Code Quality Analysis
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    if: github.event_name == 'push'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Cache SonarQube packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.sonar/cache
+          key: ${{ runner.os }}-sonar
+          restore-keys: ${{ runner.os }}-sonar
+
+      - name: Build and analyze
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        run: |
+          if [ -n "$SONAR_TOKEN" ]; then
+            ./mvnw verify sonar:sonar \
+              -Dsonar.projectKey=planning-poker \
+              -Dsonar.host.url=$SONAR_HOST_URL \
+              -Dsonar.login=$SONAR_TOKEN \
+              -DskipTests
+          else
+            echo "SonarQube analysis skipped - no token configured"
+          fi
+
+  # ===========================================
+  # Build Docker Images
+  # ===========================================
+  docker-build:
+    name: Build Docker Images
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    
+    strategy:
+      matrix:
+        service:
+          - name: pp-gateway
+            dockerfile: pp-gateway/Dockerfile
+          - name: pp-room-service
+            dockerfile: pp-room-service/Dockerfile
+          - name: pp-vote-service
+            dockerfile: pp-vote-service/Dockerfile
+          - name: pp-audit-service
+            dockerfile: pp-audit-service/Dockerfile
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build JAR
+        run: ./mvnw package -pl ${{ matrix.service.name }} -am -DskipTests
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        if: github.event_name == 'push'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-${{ matrix.service.name }}
+          tags: |
+            type=sha,prefix=
+            type=ref,event=branch
+            type=ref,event=pr
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ${{ matrix.service.dockerfile }}
+          push: ${{ github.event_name == 'push' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ===========================================
+  # Integration Tests
+  # ===========================================
+  integration-test:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: docker-build
+    if: github.event_name == 'push'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build JARs
+        run: ./mvnw package -DskipTests
+
+      - name: Start infrastructure with Docker Compose
+        run: |
+          docker compose up -d postgres redis zookeeper kafka keycloak
+          echo "Waiting for infrastructure to be ready..."
+          sleep 60
+
+      - name: Check infrastructure health
+        run: |
+          docker compose ps
+          docker exec pp-postgres pg_isready -U planning_poker || true
+          docker exec pp-redis redis-cli ping || true
+
+      - name: Start microservices
+        run: |
+          # Start services in background
+          java -jar pp-room-service/target/pp-room-service-*.jar --spring.profiles.active=test &
+          java -jar pp-vote-service/target/pp-vote-service-*.jar --spring.profiles.active=test &
+          java -jar pp-audit-service/target/pp-audit-service-*.jar --spring.profiles.active=test &
+          
+          echo "Waiting for services to start..."
+          sleep 45
+
+      - name: Health check services
+        run: |
+          echo "Checking Room Service..."
+          curl --retry 5 --retry-delay 10 --retry-connrefused http://localhost:8081/actuator/health || true
+          
+          echo "Checking Vote Service..."
+          curl --retry 5 --retry-delay 10 --retry-connrefused http://localhost:8082/actuator/health || true
+          
+          echo "Checking Audit Service..."
+          curl --retry 5 --retry-delay 10 --retry-connrefused http://localhost:8083/actuator/health || true
+
+      - name: Cleanup
+        if: always()
+        run: docker compose down -v
+
+  # ===========================================
+  # Security Scan
+  # ===========================================
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+

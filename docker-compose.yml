@@ -1,0 +1,272 @@
+services:
+  # ============================================
+  # PostgreSQL - Primary Database
+  # ============================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: pp-postgres
+    environment:
+      POSTGRES_DB: planning_poker
+      POSTGRES_USER: planning_poker
+      POSTGRES_PASSWORD: planning_poker
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U planning_poker -d planning_poker"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - pp-network
+
+  # ============================================
+  # Redis - Caching
+  # ============================================
+  redis:
+    image: redis:7-alpine
+    container_name: pp-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - pp-network
+
+  # ============================================
+  # Keycloak - Identity Provider
+  # ============================================
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0
+    container_name: pp-keycloak
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_HEALTH_ENABLED: true
+    command: start-dev
+    ports:
+      - "8180:8080"
+    networks:
+      - pp-network
+
+  # ============================================
+  # Kafka + Zookeeper - Event Bus
+  # ============================================
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: pp-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - pp-network
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: pp-kafka
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: true
+    depends_on:
+      - zookeeper
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - pp-network
+
+  # ============================================
+  # Jaeger - Distributed Tracing
+  # ============================================
+  jaeger:
+    image: jaegertracing/all-in-one:1.53
+    container_name: pp-jaeger
+    ports:
+      - "16686:16686"
+      - "4317:4317"
+      - "4318:4318"
+    environment:
+      COLLECTOR_OTLP_ENABLED: true
+    networks:
+      - pp-network
+
+  # ============================================
+  # Prometheus - Metrics Collection
+  # ============================================
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    container_name: pp-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    networks:
+      - pp-network
+
+  # ============================================
+  # Grafana - Metrics Visualization
+  # ============================================
+  grafana:
+    image: grafana/grafana:10.2.0
+    container_name: pp-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      - prometheus
+    networks:
+      - pp-network
+
+  # ============================================
+  # API Gateway
+  # ============================================
+  pp-gateway:
+    build:
+      context: .
+      dockerfile: pp-gateway/Dockerfile
+    container_name: pp-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      KEYCLOAK_HOST: keycloak
+      ROOM_SERVICE_HOST: pp-room-service
+      ROOM_SERVICE_PORT: 8081
+      VOTE_SERVICE_HOST: pp-vote-service
+      VOTE_SERVICE_PORT: 8082
+      AUDIT_SERVICE_HOST: pp-audit-service
+      AUDIT_SERVICE_PORT: 8083
+    depends_on:
+      keycloak:
+        condition: service_started
+      pp-room-service:
+        condition: service_healthy
+      pp-vote-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - pp-network
+
+  # ============================================
+  # Room Service
+  # ============================================
+  pp-room-service:
+    build:
+      context: .
+      dockerfile: pp-room-service/Dockerfile
+    container_name: pp-room-service
+    ports:
+      - "8081:8081"
+    environment:
+      DB_HOST: postgres
+      DB_NAME: planning_poker_rooms
+      DB_USER: planning_poker
+      DB_PASSWORD: planning_poker
+      REDIS_HOST: redis
+      KAFKA_SERVERS: kafka:29092
+      KEYCLOAK_HOST: keycloak
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8081/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - pp-network
+
+  # ============================================
+  # Vote Service
+  # ============================================
+  pp-vote-service:
+    build:
+      context: .
+      dockerfile: pp-vote-service/Dockerfile
+    container_name: pp-vote-service
+    ports:
+      - "8082:8082"
+    environment:
+      DB_HOST: postgres
+      DB_NAME: planning_poker_votes
+      DB_USER: planning_poker
+      DB_PASSWORD: planning_poker
+      KAFKA_SERVERS: kafka:29092
+      KEYCLOAK_HOST: keycloak
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8082/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - pp-network
+
+  # ============================================
+  # Audit Service
+  # ============================================
+  pp-audit-service:
+    build:
+      context: .
+      dockerfile: pp-audit-service/Dockerfile
+    container_name: pp-audit-service
+    ports:
+      - "8083:8083"
+    environment:
+      DB_HOST: postgres
+      DB_NAME: planning_poker_audit
+      DB_USER: planning_poker
+      DB_PASSWORD: planning_poker
+      KAFKA_SERVERS: kafka:29092
+      KEYCLOAK_HOST: keycloak
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8083/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - pp-network
+
+networks:
+  pp-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  grafana_data:

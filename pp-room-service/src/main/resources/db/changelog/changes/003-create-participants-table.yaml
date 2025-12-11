@@ -1,0 +1,68 @@
+databaseChangeLog:
+  - changeSet:
+      id: 003-create-participants-table
+      author: lufthansa
+      changes:
+        - createTable:
+            tableName: room_participants
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: room_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: varchar(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_name
+                  type: varchar(100)
+              - column:
+                  name: user_email
+                  type: varchar(255)
+              - column:
+                  name: role
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: online
+                  type: boolean
+                  defaultValueBoolean: false
+              - column:
+                  name: joined_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+              - column:
+                  name: last_seen_at
+                  type: timestamp with time zone
+
+        - addForeignKeyConstraint:
+            baseTableName: room_participants
+            baseColumnNames: room_id
+            referencedTableName: rooms
+            referencedColumnNames: id
+            constraintName: fk_participants_room
+            onDelete: CASCADE
+
+        - addUniqueConstraint:
+            tableName: room_participants
+            columnNames: room_id, user_id
+            constraintName: uk_room_participant
+
+        - createIndex:
+            tableName: room_participants
+            indexName: idx_participants_user_id
+            columns:
+              - column:
+                  name: user_id
+

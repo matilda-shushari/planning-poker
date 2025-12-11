@@ -1,0 +1,10 @@
+databaseChangeLog:
+  - include:
+      file: db/changelog/changes/001-create-rooms-table.yaml
+  - include:
+      file: db/changelog/changes/002-create-stories-table.yaml
+  - include:
+      file: db/changelog/changes/003-create-participants-table.yaml
+  - include:
+      file: db/changelog/changes/004-create-invitations-table.yaml
+

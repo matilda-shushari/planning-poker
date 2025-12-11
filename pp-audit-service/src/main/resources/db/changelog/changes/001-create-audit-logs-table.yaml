@@ -1,0 +1,87 @@
+databaseChangeLog:
+  - changeSet:
+      id: 001-create-audit-logs-table
+      author: lufthansa
+      changes:
+        - createTable:
+            tableName: audit_logs
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: event_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: event_type
+                  type: varchar(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: entity_type
+                  type: varchar(50)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: entity_id
+                  type: varchar(36)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: action
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: event_data
+                  type: text
+              - column:
+                  name: user_id
+                  type: varchar(100)
+              - column:
+                  name: user_name
+                  type: varchar(100)
+              - column:
+                  name: timestamp
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+              - column:
+                  name: source_service
+                  type: varchar(50)
+
+        - createIndex:
+            tableName: audit_logs
+            indexName: idx_audit_entity
+            columns:
+              - column:
+                  name: entity_type
+              - column:
+                  name: entity_id
+
+        - createIndex:
+            tableName: audit_logs
+            indexName: idx_audit_timestamp
+            columns:
+              - column:
+                  name: timestamp
+
+        - createIndex:
+            tableName: audit_logs
+            indexName: idx_audit_user
+            columns:
+              - column:
+                  name: user_id
+
+        - createIndex:
+            tableName: audit_logs
+            indexName: idx_audit_event_type
+            columns:
+              - column:
+                  name: event_type
+

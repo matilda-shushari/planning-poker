@@ -1,0 +1,76 @@
+databaseChangeLog:
+  - changeSet:
+      id: 002-create-stories-table
+      author: lufthansa
+      changes:
+        - createTable:
+            tableName: stories
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: room_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: title
+                  type: varchar(200)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: varchar(2000)
+              - column:
+                  name: jira_link
+                  type: varchar(500)
+              - column:
+                  name: status
+                  type: varchar(20)
+                  defaultValue: 'PENDING'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: average_score
+                  type: decimal(10,2)
+              - column:
+                  name: final_estimate
+                  type: varchar(20)
+              - column:
+                  name: display_order
+                  type: int
+                  defaultValueNumeric: 0
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: timestamp with time zone
+              - column:
+                  name: voting_started_at
+                  type: timestamp with time zone
+              - column:
+                  name: voting_ended_at
+                  type: timestamp with time zone
+
+        - addForeignKeyConstraint:
+            baseTableName: stories
+            baseColumnNames: room_id
+            referencedTableName: rooms
+            referencedColumnNames: id
+            constraintName: fk_stories_room
+            onDelete: CASCADE
+
+        - createIndex:
+            tableName: stories
+            indexName: idx_stories_room_id
+            columns:
+              - column:
+                  name: room_id
+
