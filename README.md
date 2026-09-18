@@ -470,10 +470,6 @@ docker build -t pp-room-service -f pp-room-service/Dockerfile .
 
 ---
 
-## 📜 License
-
-This project is developed as a sample project for Lufthansa technical assessment.
-
 ---
 
 ## 👥 Author
