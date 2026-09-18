@@ -478,9 +478,7 @@ This project is developed as a sample project for Lufthansa technical assessment
 
 ## 👥 Author
 
-**Matilda Dervishaj**  
-Lufthansa Industry Solutions Candidate Project
-
+**Matilda Dervishaj** 
 ---
 
 *Built with ❤️ using Spring Boot, Kafka, and Keycloak*
